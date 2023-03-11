@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Vote on Proposal</title>
+    
+    
+</head>
+
+<body>
+    
+    <div class="loader" id="Loader" >
+        <h1>DO NOT CLOSE this tab AFTER CONFIRMING transaction on MetaMask! It's generating your DOUGH's metadata on IPFS! </h1>
+        <div class="wheelloader">🍪 🍪 🍪</div>
+        <h1>If loading is stuck or error, but your transaction went through, please <a href="https://cookie2crumbs.com/index.html#footer" target="_blank">contact us</a> on Discord, Twitter, Telegram, Reddit, or email.</h1>
+    </div>
+
+    <button class="btn" id="btn-connect-metamask">Connect MetaMask</button>
+    
+    <button class="btn" id="btn-connect-metamask-matic">[Temporary] Wallet Matic</button>
+    
+    
+    
+    <button onclick="showGraphQLData()">press me</button>
+    
+    <li><button class="btn" id="voteButton" >Vote on Proposal</button><span id="voteButton_validation"></span></li>
+
+    <li><button class="btn" id="resetButton" onclick="resetInput()">Reset review form</button></li>
+    <li>Your wallet address: <span id="wallet-address">Not logged in</span></li>
+    <br><br>
+    
+    <li><span>Use your Cookie2Dough NFT as votes: </span><button class="btn" id="btn-confirm-nft">Select NFT</button></li><br>
+    <main id="tablenft"></main>
+    
+    <li>Your vote receipt: <span id="vote_ipfs">Not voted yet</span></li>
+    
+    <i>Vote receipt: <a id="link" href="#" target="_blank"></a></i>
+    <br><br>
+
+    <textarea id="myComment" rows="6" cols="60" maxlength="100" placeholder="What do you think about this advertisement? (optional)"></textarea> 
+    <main id="tablemain"></main>
+
+<!--
+<table>
+      <tr><td><label><strong>Pick one or more issues you identify from the advertisement </strong></label></td></tr>  
+      <tr><td><label><strong>Violative reasons: </strong></label></td></tr>  
+      
+      
+      
+      <tr><td><label><strong>Non-violative reasons: </strong></label></td></tr>  
+      <tr><td><label>Generic and boring </label></td><td><input id="myInput11" class="input" type="number" min="0" value="0"/></td><td><label id="myPercent_input11">0%</label></td></tr>  
+      <tr><td><label>Not reaching the right audience </label></td><td><input id="myInput12" class="input" type="number" min="0" value="0"/></td><td><label id="myPercent_input12">0%</label></td></tr>  
+      <tr><td><label>Irritating </label></td><td><input id="myInput13" class="input" type="number" min="0" value="0"/></td><td><label id="myPercent_input13">0%</label></td></tr>
+</table>
+-->
+
+    <!--add preview of description field-->
+
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>  
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js'></script>    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
+    
+    <script src='https://cookie2crumbs.com/pinata_functions.js'></script>
+    <script  src="https://cookie2crumbs.com/nft_contract_call.js"></script> 
+    
+    <script type="module">
+        const link = document.getElementById("link"); //called externally by pinata_function
+        const url = `https://api.pinata.cloud/pinning/pinFileToIPFS`;
+        
+        const queryString = new URL(window.location.href); // this is pulling tokenid=
+        console.log(queryString);
+        
+        const urlParams = new URLSearchParams(queryString.search);
+        console.log(urlParams);
+        
+        const proposalId = urlParams.get('id');
+        console.log(proposalId);        
+    
+        const ipfs = "https://snapshot.mypinata.cloud/ipfs/" + proposalId;
+    
+        var account = null;    
+        var voting_power = 0;
+        
+        // voting validation variables
+        var maxvote = 0;  // updated by nft_contract_call
+        var newvote = 0;
+        
+        var comment_input = "";
+
+        var option_length = 0;
+        
+        // show Proposal CID Data stats
+        var itemtable = '';        
+        
+        // login metamask
+        document.getElementById('btn-connect-metamask-matic').onclick = () => {
+            getMaticAddress();
+        }
+
+        
+        // login metamask
+        document.getElementById('btn-confirm-nft').onclick = () => {
+            confirm("Are you sure?");
+            pullNFT();
+        }
+        
+        const getMaticAddress = async () => {
+            if (window.ethereum) {
+
+                await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: '0x13881' }]  //0x89 is for matic, 0x13881 for mumbai testnet
+                });
+                
+                window.web3 = new Web3(window.ethereum);
+                
+                let accounts = await web3.eth.getAccounts();
+                account = accounts[0];
+                document.getElementById('wallet-address').textContent = account;
+            }
+        }        
+        
+        // get NFT votes
+        
+        
+        function pullNFT() {
+            //getAddress();
+
+            var ele = document.getElementsByName('nft_owned');
+            console.log(ele);
+            
+            console.log(ele.length);
+            
+            for(var i = 0; i < ele.length; i++) {
+                if(ele[i].checked) 
+                console.log(ele[i]);
+                maxvote = ele[i].value; //dont use let, causes local
+                
+                // add a else condition
+            } 
+            
+            return maxvote;
+        }
+        
+        /*
+                for (var i = 0; i < option_length; i++) {
+                    
+                    let input_value = parseInt(document.getElementById("myInput"+i).value);
+                    console.log(input_value);
+                    
+                    inner_vote += parseInt(input_value);
+                    console.log(i, " = ", inner_vote);
+                    
+                    document.getElementById("myPercent_input"+i).innerHTML = parseFloat(input_value/maxvote*100).toFixed(2)+"%" ;
+                }        
+        */
+        
+
+        
+        function showGraphQLData() {
+            // how to add variable proposalId into graphql call
+
+            
+        }        
+        
+        window.onload = function() {
+            loadJSON();
+        }
+        
+        // load and print json
+        function loadJSON() {
+            fetch(ipfs)
+            .then(function(response){
+                return response.json();
+            })
+            .then(function(data){
+                console.log(data);
+                
+                console.log(data.choices.length);
+                
+                console.log(data.choices[1]);
+                
+                let option_length = data.choices.length; // u used local variable, consider changing
+                var itemtable = '';
+                
+                for (var i = 0; i < data.choices.length; i++) {
+
+                        itemtable += `
+                        <tr>
+                        <td>${data.choices[i]}</td>
+
+                        <td><input id="myInput${i}" class="input" type="number" min="0" value="0"/></td>
+
+                        <td><label id="myPercent_input${i}">0%</label></td>
+                        </tr>`; 
+
+                }
+                
+                // tables down here
+                document.querySelector("#tablemain").innerHTML = `
+                <table>
+                    <tbody>
+                      <tr><td><label><strong>Pick one or more issues you identify from the advertisement </strong></label></td></tr> 
+                      <tr><td><label><strong>Violative reasons: </strong></label></td></tr> 
+                        ${itemtable}
+                	</tbody>
+                </table> 
+                `; 
+
+                console.log(option_length);
+                
+                document.getElementById("voteButton").onclick=async ()=>{
+                    
+                    //var option_length1 = loadJSON();
+                    console.log(option_length);
+                    validatevote(option_length);
+                    //await submitvote();
+                };                  
+
+            })
+        } 
+        
+        // signature
+        const SIGNING_DOMAIN_NAME = "OFFCHAINPROPOSAL" // CHANGE DOMAIN NAME TO COOKIE2CRUMBS!!!!
+        const SIGNING_DOMAIN_VERSION = "1"
+        
+        class SignHelper {
+            
+            constructor(contractAddress, chainId, signer) {
+                this.contractAddress = contractAddress
+                this.chainId = chainId
+                this.signer = signer
+            }
+
+            async createSignature(client, transaction_id) {
+                const obj = { client, transaction_id }
+                console.log("1");
+                const domain = await this._signingDomain()
+                const types = {
+                    Web3Struct: [
+                        {name: "client", type: "address"},
+                        {name: "transaction_id", type: "string"}
+                    ]
+                }
+                const signature = await this.signer._signTypedData(domain, types, obj)
+                return { ...obj, signature }
+            }
+            
+            async _signingDomain() {
+                if (this._domain != null) {
+                    return this._domain
+                }
+                console.log("2");
+                const chainId = await this.chainId
+                this._domain = {
+                    name: SIGNING_DOMAIN_NAME,
+                    version: SIGNING_DOMAIN_VERSION,
+                    verifyingContract: this.contractAddress,
+                    chainId,
+                }
+                return this._domain
+            }
+            
+            static async getSign(contractAddress, chainId, _transaction_id, option_length) {
+                
+                var provider = new ethers.providers.Web3Provider(window.ethereum)
+                console.log("4");
+                await provider.send("eth_requestAccounts", []);
+                var signer = provider.getSigner()
+                var address_owner = await signer.getAddress();
+                console.log(address_owner);
+                
+                /*
+            var web3 = new ethers.providers.Web3Provider(window.ethereum)
+            const [account] = await web3.listAccounts();            
+                */
+                
+                console.log("5");
+                var lm = new SignHelper(contractAddress, chainId, signer)
+                
+                const currentBlock = await provider.getBlockNumber();
+                const currentTimestamp = (await provider.getBlock(currentBlock)).timestamp;
+                    
+                console.log(currentBlock, "==", currentTimestamp);
+                console.log("Contract address: ", contractAddress);
+                
+                var voucher = await lm.createSignature(address_owner, _transaction_id)
+                console.log("Signature: ", voucher.signature);
+                //console.log("Timestamp: ",timestamp);
+                
+                console.log(_transaction_id + " ; " + voucher.signature);
+                await propose(contractAddress, voucher.signature, address_owner, currentBlock, currentTimestamp, option_length);
+                return voucher
+
+            }
+            
+        }
+        
+        function submitvote(option_length) {
+                console.log(option_length);
+                SignHelper.getSign('0x6a02ef38bb703a98861b62c079c0a399b50d5545', 80001, proposalId, option_length);
+                // former spindl address - 0x93d361D0051229a550195E6cc4df1cA7A120744D
+                // testing address for cookie2crumbs - 0x6a02ef38bb703a98861b62c079c0a399b50d5545
+            
+        }
+        
+        //import snapshot from './npm/@snapshot-labs/snapshot.js';
+        async function propose(con_add, vouc, addr_own, current_block, current_time, option_length) {
+
+            console.log("Options numbers successfully parsed - ",option_length);
+            
+            const v1 = con_add; 
+            const v2 = vouc;
+            const v3 = addr_own;
+            const v4 = current_block;
+            const v5 = current_time;
+            
+            var receipt_table = '';
+            
+                for (var i = 0; i < option_length; i++) {
+                    
+                    let input_value = parseInt(document.getElementById("myInput"+i).value);
+                    console.log(input_value);
+                    
+                    receipt_table +=`\"${i}\":${input_value},`;
+                        
+                }
+            
+            console.log(receipt_table);
+            
+            let final_receipt = JSON.stringify("{"+(
+                (receipt_table.replace(/(\r\n|\n|\r)/gm, ""))
+                .substring(0, receipt_table.length-1)
+                )+"}");
+            
+            let choice = JSON.parse(final_receipt);
+            
+            console.log(final_receipt);
+            console.log(choice);
+            
+            const receipt = {
+                contract_address: v1,
+                signature: v2,
+                address: v3,
+                proposal: proposalId,
+                choice,
+                reason: comment_input,
+                timestamp: v5,
+                snapshot: v4
+            };
+            
+            console.log(receipt);
+            
+            pinFileToIPFS(apikey, apiSecret, receipt, v3, "open", "vote");
+            
+            console.log("8");
+        }
+        
+        // voting validation trigger
+        async function validatevote(option_length) {
+                console.log(option_length);
+                
+                await pullNFT();
+                
+                console.log(maxvote);
+                
+                var inner_vote = 0;
+                var new_vote = 0;
+                
+                comment_input = document.getElementById("myComment").value;
+                
+                for (var i = 0; i < option_length; i++) {
+                    
+                    let input_value = parseInt(document.getElementById("myInput"+i).value);
+                    console.log(input_value);
+                    
+                    inner_vote += parseInt(input_value);
+                    console.log(i, " = ", inner_vote);
+                    
+                    document.getElementById("myPercent_input"+i).innerHTML = parseFloat(input_value/maxvote*100).toFixed(2)+"%" ;
+                }
+                
+                new_vote = maxvote - inner_vote;
+                console.log(new_vote);
+                
+                /*
+                input_value0 = parseInt(document.getElementById("myInput0").value);
+                input_value1 = parseInt(document.getElementById("myInput1").value);
+                input_value2 = parseInt(document.getElementById("myInput2").value);
+                input_value3 = parseInt(document.getElementById("myInput3").value);
+                input_value4 = parseInt(document.getElementById("myInput4").value);
+                input_value5 = parseInt(document.getElementById("myInput5").value);
+                input_value6 = parseInt(document.getElementById("myInput6").value);
+                input_value7 = parseInt(document.getElementById("myInput7").value);
+                input_value8 = parseInt(document.getElementById("myInput8").value);
+                input_value9 = parseInt(document.getElementById("myInput9").value);        
+                input_value10 = parseInt(document.getElementById("myInput10").value);
+                input_value11 = parseInt(document.getElementById("myInput11").value);
+                input_value12 = parseInt(document.getElementById("myInput12").value);
+                input_value13 = parseInt(document.getElementById("myInput13").value);
+                */
+                
+                //let new_vote = maxvote-input_value0-input_value1-input_value2-input_value3-input_value4-input_value5-input_value6-input_value7-input_value8-input_value9-input_value10-input_value11-input_value12-input_value13;
+                //console.log(input_value0,input_value1,input_value2,input_value3,input_value4,input_value5,input_value6,input_value7,input_value8,input_value9,input_value10,input_value11,input_value12,input_value13,new_vote);
+                
+                // 
+                //elem.setAttribute("max",new_vote+elem.value);
+                
+                /*
+                document.getElementById('myPercent_input0').innerHTML = parseFloat(input_value0/maxvote*100).toFixed(2)+"%" ;
+                document.getElementById('myPercent_input1').innerHTML = parseFloat(input_value1/maxvote*100).toFixed(2)+"%" ;
+                document.getElementById('myPercent_input2').innerHTML = parseFloat(input_value2/maxvote*100).toFixed(2)+"%" ;
+                document.getElementById('myPercent_input3').innerHTML = parseFloat(input_value3/maxvote*100).toFixed(2)+"%" ;
+                document.getElementById('myPercent_input4').innerHTML = parseFloat(input_value4/maxvote*100).toFixed(2)+"%" ;
+                document.getElementById('myPercent_input5').innerHTML = parseFloat(input_value5/maxvote*100).toFixed(2)+"%" ;        
+                document.getElementById('myPercent_input6').innerHTML = parseFloat(input_value6/maxvote*100).toFixed(2)+"%" ;
+                document.getElementById('myPercent_input7').innerHTML = parseFloat(input_value7/maxvote*100).toFixed(2)+"%" ;
+                document.getElementById('myPercent_input8').innerHTML = parseFloat(input_value8/maxvote*100).toFixed(2)+"%" ;   
+                document.getElementById('myPercent_input9').innerHTML = parseFloat(input_value9/maxvote*100).toFixed(2)+"%" ;
+                document.getElementById('myPercent_input10').innerHTML = parseFloat(input_value10/maxvote*100).toFixed(2)+"%" ;
+                document.getElementById('myPercent_input11').innerHTML = parseFloat(input_value11/maxvote*100).toFixed(2)+"%" ;   
+                document.getElementById('myPercent_input12').innerHTML = parseFloat(input_value12/maxvote*100).toFixed(2)+"%" ;
+                document.getElementById('myPercent_input13').innerHTML = parseFloat(input_value13/maxvote*100).toFixed(2)+"%" ;  
+                */
+                
+                
+                // add max vp validation here using >=new_vote 
+                if (new_vote > 0){
+                    //document.getElementById("voteButton").disabled = true; 
+                    document.getElementById("voteButton_validation").innerHTML = "Please use all your votes! Remaining votes: " + new_vote;
+                    document.getElementById("voteButton_validation").style.color = "red";
+                }
+                else if (new_vote < 0){
+                    //document.getElementById("voteButton").disabled = true; 
+                    document.getElementById("voteButton_validation").innerHTML = "Insufficient voting power! Exceeded votes by: " + Math.abs(new_vote);
+                    document.getElementById("voteButton_validation").style.color = "red";
+                }                
+                else{
+                    document.getElementById("voteButton").disabled = true;
+                    document.getElementById("voteButton_validation").innerHTML = "100% of votes used!";
+                    document.getElementById("voteButton_validation").style.color = "green";
+                    
+                    submitvote(option_length);
+                }
+                
+        }
+               
+        
+    </script>
+    
+</body>
+</html>

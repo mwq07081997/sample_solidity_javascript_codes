@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Create Proposal</title>
+    
+    <script>
+
+    </script>
+    
+</head>
+
+<body>
+    <i>link returned: <a id="link" href="#"></a></i>
+    <form name="form1" id="form1">
+        Paste URL of the advertisement here: <input type="url" name="ads_url" id="ads_url" required>
+        <br><br>
+        Source: 
+          <select name="source" id="source" required>
+            <option value="" selected="selected">Please select where you find this advertisement</option>
+          </select>
+          <br><br>
+        Is there a problem with this advertisement?: 
+          <select name="subject" id="subject" required>
+            <option value="" selected="selected">Select response </option>
+          </select>
+          <br><br>
+        What was wrong about this ad?: 
+          <select name="topic" id="topic" required>
+            <option value="" selected="selected">Select reason </option>
+          </select>
+          <br><br>
+        
+          
+          <br><br>
+          Preview:
+          <br><br>
+          <p id="demo">Loading...</p>
+    </form>
+    <button id="proposeButton">Submit proposal</button> 
+    <!--add preview of description field-->
+    
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>  
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js'></script>    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
+    <script src='https://cookie2crumbs.com/pinata_functions.js'></script>
+    
+    <script type="module">
+        
+        const url = `https://api.pinata.cloud/pinning/pinFileToIPFS`;
+        const link = document.getElementById("link");
+        var final_title = "";
+        var final_description = "";        
+        // form validations and variables
+        var subjectObject = {
+            "Violative": {
+                "Misleading or scam (Pyramid schemes, stock gurus, fake charity)":[],
+                "Sexually inappropriate (Has implied sex or unacceptable nudity)":[],
+                "Offensive, Hate and Harassment (Hate speech against specific race, gender or cause)":[],
+                "Violence (Graphical footage, animal or physical abuse)":[],
+                "Fake mobile app or game (Promoting app or games that has bad reviews)":[],
+                "Sales of prohibited content or product (fake merchandise, weapons, drugs, exotic pets, etc.)":[],
+                "Spam (This ads has been showing multiple times over a long duration)":[],
+                "Political agenda (Politicians preaching for votes or insulting another party)":[],
+                "Not safe for children (Ads involve children or use of children in unethical ways)":[],
+                "False news":[] 
+              },
+            "Non-violative": {
+                "Generic and boring":[],
+                "Not reaching the right audience":[],
+                "Irritating":[]
+              }
+        }
+        
+        var sourceObject = new Array ("Facebook","YouTube","Instagram","TikTok","Twitter","Other website");
+        var ads_urlSel = document.getElementById("ads_url");
+        
+          var subjectSel = document.getElementById("subject");
+          var topicSel = document.getElementById("topic");
+          var sourceSel = document.getElementById("source");
+        
+        
+        window.onload = function() {
+          let subjectSel = document.getElementById("subject");
+          let topicSel = document.getElementById("topic");
+          let sourceSel = document.getElementById("source");
+
+          
+          for (var x in subjectObject) {
+            subjectSel.options[subjectSel.options.length] = new Option(x, x);
+          }
+          
+          for (var i = 0; i < sourceObject.length; ++i) {
+            sourceSel[sourceSel.length] = new Option(sourceObject[i], sourceObject[i]);
+          }
+          
+          subjectSel.onchange = function() {
+            //empty Chapters- and Topics- dropdowns
+            //chapterSel.length = 1;
+            topicSel.length = 1;
+            //display correct values
+            for (var y in subjectObject[this.value]) {
+              topicSel.options[topicSel.options.length] = new Option(y, y);
+            }
+          }
+
+          topicSel.onchange = function() {
+            final_title = "A " + subjectSel.value + " advertisement found on " + sourceSel.value + " is identified. Please review if this is correct.";
+            
+            final_description = "The original poster (OP) submitted this advertisement from " + sourceSel.value + "<br> OP believes that it is "+ subjectSel.value + " because it is " + topicSel.value + " content. <br>Please review this ad link and be cautious of malicious content: <br>" + ads_urlSel.value;
+            
+            document.getElementById("demo").innerHTML = final_title + "<br>" +  final_description;
+          }
+        } 
+        
+        document.getElementById("proposeButton").onclick=async ()=>{
+            await submitvote();
+        };        
+        
+        // signature
+        const SIGNING_DOMAIN_NAME = "OFFCHAINPROPOSAL"
+        const SIGNING_DOMAIN_VERSION = "1"
+        
+        class SignHelper {
+            
+            constructor(contractAddress, chainId, signer) {
+                this.contractAddress = contractAddress
+                this.chainId = chainId
+                this.signer = signer
+            }
+
+            async createSignature(client, transaction_id) {
+                const obj = { client, transaction_id }
+                console.log("1");
+                const domain = await this._signingDomain()
+                const types = {
+                    Web3Struct: [
+                        {name: "client", type: "address"},
+                        {name: "transaction_id", type: "string"}
+                    ]
+                }
+                const signature = await this.signer._signTypedData(domain, types, obj)
+                return { ...obj, signature }
+            }
+            
+            async _signingDomain() {
+                if (this._domain != null) {
+                    return this._domain
+                }
+                console.log("2");
+                const chainId = await this.chainId
+                this._domain = {
+                    name: SIGNING_DOMAIN_NAME,
+                    version: SIGNING_DOMAIN_VERSION,
+                    verifyingContract: this.contractAddress,
+                    chainId,
+                }
+                return this._domain
+            }
+            
+            static async getSign(contractAddress, chainId, _transaction_id) {
+                
+                var provider = new ethers.providers.Web3Provider(window.ethereum)
+                console.log("4");
+                await provider.send("eth_requestAccounts", []);
+                var signer = provider.getSigner()
+                var address_owner = await signer.getAddress();
+                console.log(address_owner);
+                
+                console.log("5");
+                var lm = new SignHelper(contractAddress, chainId, signer)
+                
+                const currentBlock = await provider.getBlockNumber();
+                const currentTimestamp = (await provider.getBlock(currentBlock)).timestamp;
+                    
+                console.log(currentBlock, "==", currentTimestamp);
+                console.log("Contract address: ", contractAddress);
+                
+                var voucher = await lm.createSignature(address_owner, _transaction_id)
+                console.log("Signature: ", voucher.signature);
+                //console.log("Timestamp: ",timestamp);
+                
+                console.log(_transaction_id + " ; " + voucher.signature);
+                await propose(contractAddress, voucher.signature, address_owner, currentBlock, currentTimestamp);
+                return voucher
+
+            }
+            
+        }
+        
+        function submitvote() {
+                
+                // use time and address as params
+                
+                SignHelper.getSign('0x6a02ef38bb703a98861b62c079c0a399b50d5545', 80001, ads_urlSel.value);
+                
+                // former spindl address - 0x93d361D0051229a550195E6cc4df1cA7A120744D
+                // testing address for cookie2crumbs - 0x6a02ef38bb703a98861b62c079c0a399b50d5545
+            
+        }
+        
+        //import snapshot from './npm/@snapshot-labs/snapshot.js';
+        async function propose(con_add, vouc, addr_own, current_block, current_time) {
+            //const hub = 'https://hub.snapshot.org'; // or https://testnet.snapshot.org for testnet
+            //const client = new snapshot.Client712(hub);
+            //console.log(client);
+            
+            //const web3 = new ethers.providers.Web3Provider(window.ethereum);
+            //const [account] = await web3.listAccounts();
+
+            /*
+            var web3 = new ethers.providers.Web3Provider(window.ethereum)
+            const [account] = await web3.listAccounts();
+            
+            const currentBlock = await web3.getBlockNumber();
+            const currentTimestamp = (await web3.getBlock(currentBlock)).timestamp;
+                
+            console.log(currentBlock);
+            console.log(currentTimestamp);        
+        
+            
+        
+            console.log(final_title);
+            console.log(final_description);
+            */
+            //////
+            const v1 = con_add;
+            const v2 = vouc;
+            const v3 = addr_own;
+            const v4 = current_block;
+            const v5 = current_time;
+            
+            console.log(sourceSel.value);
+            console.log(subjectSel.value);
+            console.log(topicSel.value); 
+            console.log(ads_urlSel.value); 
+            
+            const receipt = {
+                contract_address: v1,
+                signature: v2,
+                address: v3,
+                source: sourceSel.value,
+                url: ads_urlSel.value,
+                subject: subjectSel.value,
+                choice: topicSel.value,
+                choices: ['Misleading or scam (Pyramid schemes, stock gurus, fake charity)',
+                    'Sexually inappropriate (Has implied sex or unacceptable nudity)',
+                    'Offensive, Hate and Harassment (Hate speech against specific race, gender or cause)',
+                    'Violence (Graphical footage, animal or physical abuse)',
+                    'Fake mobile app or game (Promoting app or games that has bad reviews)',
+                    'Sales of prohibited content or product (fake merchandise, weapons, drugs, exotic pets, etc.)',
+                    'Spam (This ads has been showing multiple times over a long duration)',
+                    'Political agenda (Politicians preaching for votes or insulting another party)',
+                    'Not safe for children (Ads involve children or use of children in unethical ways)',
+                    'False news',
+                    'Generic and boring',
+                    'Not reaching the right audience',
+                    'Irritating',
+                    'Null'],
+                start: v5,
+                end: v5+3600,
+                snapshot: v4
+            };
+            
+            console.log("7");
+            // print link to ipfs
+            //document.getElementById("demo").innerHTML = `<a href="https://cookie2crumbs.com/proposal.html?id=${receipt.id}">${receipt.id}</a>`; // show return id
+            pinFileToIPFS(apikey, apiSecret, receipt, v3, "open", "proposal");
+            
+            console.log("8");
+        }
+        
+    
+    </script>
+    
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Signing Vouchers for ERC20</title>
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+</head>
+
+<body>
+
+<input type="number" id="votes_id" name="fvotes">
+  <select id="choices_id" name="fchoices">
+    <option value="1">Yes</option>
+    <option value="2">No</option>
+  </select>
+<!--
+
+const proposal_ids = ["0x6162636400000000000000000000000000345000000000000000000000000000"];  // proposal id array
+const choices = ["1"];   // choice array
+const votes = ["99"];   // votes array
+
+-->
+
+<button type="button" onclick="submitvote()">Submit vote</button>
+<span id="voucher_signature">xx</span>
+
+<script type="text/javascript">
+
+// these constraints must match ones used in smart contract.
+
+const SIGNING_DOMAIN_NAME = "OFFCHAINPROPOSAL"
+const SIGNING_DOMAIN_VERSION = "1"
+
+class SignHelper {
+    
+    constructor(contractAddress, chainId, signer) {
+        this.contractAddress = contractAddress
+        this.chainId = chainId
+        this.signer = signer
+    }
+
+    async createSignature(client, transaction_id) {
+        const obj = { client, transaction_id }
+        const domain = await this._signingDomain()
+        const types = {
+            Web3Struct: [
+                {name: "client", type: "address"},
+                {name: "transaction_id", type: "string"}
+            ]
+        }
+        const signature = await this.signer._signTypedData(domain, types, obj)
+        return { ...obj, signature }
+    }
+    
+    async _signingDomain() {
+        if (this._domain != null) {
+            return this._domain
+        }
+        const chainId = await this.chainId
+        this._domain = {
+            name: SIGNING_DOMAIN_NAME,
+            version: SIGNING_DOMAIN_VERSION,
+            verifyingContract: this.contractAddress,
+            chainId,
+        }
+        return this._domain
+    }
+    
+    static async getSign(contractAddress, chainId, _client, _transaction_id) {
+        var provider = new ethers.providers.Web3Provider(window.ethereum)
+        
+        await provider.send("eth_requestAccounts", []);
+        var signer = provider.getSigner()
+        await signer.getAddress()
+        
+        var lm = new SignHelper(contractAddress, chainId, signer)
+
+        const timestamp = await provider.getBlockNumber()
+
+        var voucher = await lm.createSignature(_client, _transaction_id)
+        console.log("Signature: ", voucher.signature);
+        //console.log("Timestamp: ",timestamp);
+        
+        document.getElementById('voucher_signature').textContent = _transaction_id + " ; " + voucher.signature;
+        return voucher
+        
+    }
+    
+}
+
+// get array from json file
+// spam whitelist
+/*
+const proposal_ids = ["0x6162636400000000000000000000000000345000000000000000000000000000"];  // proposal id array
+const choices = ["1"];   // choice array
+const votes = ["99"];   // votes array
+*/
+
+const times = 32;
+
+//const transaction_id  = ["bafybeih4dtj5wvvlejwjknv2ko5xzfwfnremxftj7wvi2bv43hspgjcs3i","bafkreicytbzqslcxzu52qfdqcyousuyb34gtnx2f7kryf2p6q4kbem2h4u","bafkreicb5y7beipm3gtgsvdztcawee6rwk7pxnvinvchznco2tamd6vv7q","QmeVgoBTsi3vgTGvedn6a32UhwVh6gmrofVfafyPVgx7tB","QmVGdfmfpdzgwwkgN8QBDvJXvLFHZ2ncwGAb772EdSADgn","QmWXJXRdExse2YHRY21Wvh4pjRxNRQcWVhcKw4DLVnqGqs","bafybeihpv7ff2pojbcctefmb4bqq5jcrf3szx56anhfz7qiwb65op76q7m","QmazTEvJHfY7rGQ1g5KxQm3Q86KDv9XnF3a42G9n46xidq","bafkreicnhmxehzwr4t4eqcfxhfecuhm3nmkqlap6yssei7xeyrqfqmrh740xd6eFf8F07cAF3443A1178407d3de4129149D6eF6","bafkreiduuysyceqp27kacgwfzevdarfb7bwfgvm4v7gwbxxkb343dtwpz40x6d5E5Ba88861Df8dba0EB53ebad1BA89eB4b238b","QmZakfBgxi1A67ohE8iCryWnrY2sbmLDzkECT3uJFauBc10x3429CbFf7EB34e4C9dD9D7E41041fd7b2a01FdB0","bafkreid3phlhu4dihsvmjwov7nv2nsjrvx4v24uy55ebq7smr6piae6ghe0x2684A202a374D87BB321A744482B89bf6DeaF8Bd","QmXTwmtXPLzGuwBeRVBog6mdpxPxFmWFPzhb4nAERAqorj0xc183f0889e897A3dDEaCe022728eB8fE4971F04b","QmUNyWJapHsccgPm3rmKEGYGfqhJitgdn3sYLrE9o44P3D0x4599ACc33C2C8f47DcB9646d5120A874Fcb6b1D6","QmcLfdAQRUcwrX6wzTxfHFoxjvSxx4gBWKJGMRjwvTXoCS0xD801e5C154d770814E4dEBD1DDC8214c39720bfe","QmdyjcZRHWPVZ63BoaVnavCbNQSpJv83uFDBVpt8US5dQL0x63BAb39b89A156cc528B374C0109b77B4e343b53","Qme2mXkDCzvHj3XW7APFYu1oEVcWQSi8uXmVpiGXy6joHo0x0c17daFbfa2fe7956A867fEE92f87654aC409AC4","bafkreib6m4lzittaoybk6ywv6kt6uum2mu4vwyn7x7bu2kxii5yasdee6i","Qmcwpx6m1nTfM2s4eUeYpAUF6CX8PWJ8aEqi6XC4sVeFq50xE0268949232a2fb9099F31fACA947c12ffb54f89","bafkreic7yku2c44os7wcelru7kle5un43xxwa44okqlwvw6urq75l5nbui0x510B0068C0756bBEFCBaffB6567e467d661291FE","QmZ8YxRLE5Do2mdRmPVsMS3DRmrXXa59QyiFPE2ZzvXdzF0x9Bbb5476491Bbc5c052c8A8C67d0c07Fb077F978"];
+//const client = document.getElementById('choices_id').value;   // choice array
+//const client = ["0xe843a75566df3c1DEbe4298E37c8BA1F41CCdb7a","0xe843a75566df3c1DEbe4298E37c8BA1F41CCdb7a","0xe843a75566df3c1DEbe4298E37c8BA1F41CCdb7a","0x1470f6c4241f4c3f864320c990b13d99bea28a3c","0x1470f6c4241f4c3f864320c990b13d99bea28a3c","0x1470f6c4241f4c3f864320c990b13d99bea28a3c","0xe843a75566df3c1DEbe4298E37c8BA1F41CCdb7a","0xe843a75566df3c1DEbe4298E37c8BA1F41CCdb7a","0xe843a75566df3c1DEbe4298E37c8BA1F41CCdb7a","0xe843a75566df3c1DEbe4298E37c8BA1F41CCdb7a","0x1470f6c4241f4c3f864320c990b13d99bea28a3c","0x1470f6c4241f4c3f864320c990b13d99bea28a3c","0x1470f6c4241f4c3f864320c990b13d99bea28a3c","0x1470f6c4241f4c3f864320c990b13d99bea28a3c","0x1470f6c4241f4c3f864320c990b13d99bea28a3c","0xe843a75566df3c1DEbe4298E37c8BA1F41CCdb7a","0xe843a75566df3c1DEbe4298E37c8BA1F41CCdb7a","0xe843a75566df3c1DEbe4298E37c8BA1F41CCdb7a","0x1470f6c4241f4c3f864320c990b13d99bea28a3c","0x1470f6c4241f4c3f864320c990b13d99bea28a3c","0x1470f6c4241f4c3f864320c990b13d99bea28a3c"];
+
+
+const transaction_id  = ["bafybeih4dtj5wvvlejwjknv2ko5xzfwfnremxftj7wvi2bv43hspgjcs3i"];
+const client = ["0xe843a75566df3c1DEbe4298E37c8BA1F41CCdb7a"];
+
+
+//const transaction_record = document.getElementById('votes_id').value;   // votes array
+
+
+function submitvote() {
+    for (var i = 0; i < transaction_id.length; i++) {
+
+        //console.log("coupon id: ", voucherid[i]);
+        //console.log("wallet address: ", walletaddress[i]);
+        
+        console.log(" Client Address: ",client[i], " Transaction ID: ",transaction_id[i]);
+        
+        SignHelper.getSign('0x6a02ef38bb703a98861b62c079c0a399b50d5545', 80001, client[i], transaction_id[i].toString());
+        
+        // former spindl address - 0x93d361D0051229a550195E6cc4df1cA7A120744D
+        // testing address for cookie2crumbs - 0x6a02ef38bb703a98861b62c079c0a399b50d5545
+        
+        // send email of details
+        // can u add address as part of param? 
+    }
+
+}
+
+
+        
+
+</script>
+</body>    
+</html>
