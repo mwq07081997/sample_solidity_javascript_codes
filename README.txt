@@ -1,6 +1,6 @@
 The available codes in this Github Repo and its live pages:
 1) Factory Model - https://mumbai.polygonscan.com/address/0x6a02ef38bb703a98861b62c079c0a399b50d5545
-2) Child contract - https://mumbai.polygonscan.com/address/0xF4c85843bc211ECFab3948FF41876D313E862b29
+2) Child contract - https://mumbai.polygonscan.com/address/0x93751a4EA0c9e215316f274314F0347973BC684d
 
 Source code:
 /solidity/cookie2crumbs_factory_3.sol
